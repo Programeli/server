@@ -14,6 +14,9 @@ const cors = require('cors');
 //bcrypt is a password hashing library for Node.js.
 const bcrypt = require('bcrypt');
 
+//express-session is a middleware for managing sessions.
+const session = require('express-session');
+
 const app = express();
 const PORT = 3001;
 
@@ -24,6 +27,13 @@ const connection = mysql.createConnection({
   password: '',
   database: 'final-react',
 });
+
+// Configure session middleware
+app.use(session({
+  secret: 'secret-key',
+  resave: false,
+  saveUninitialized: true,
+}));
 
 // Connect to MySQL database
 connection.connect((err) => {
@@ -102,6 +112,8 @@ app.post('/log-in', async (req, res) => {
       }
 
       // Authentication successful
+      req.session.user = { username }; // Set session data
+      console.log('Session set:', req.session.user); // Log session data
       return res.status(200).json({ message: 'Login successful' });
     });
   } catch (error) {
@@ -109,6 +121,28 @@ app.post('/log-in', async (req, res) => {
     console.error('Error executing database query:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+app.get('/profile', (req, res) => {
+  // Check if user is logged in
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // User is logged in, return profile information
+  res.json({ username: req.session.user.username });
+});
+
+// Logout endpoint
+app.post('/logout', (req, res) => {
+  // Destroy session
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.json({ message: 'Logout successful' });
+  });
 });
 
 app.listen(PORT, () => {
