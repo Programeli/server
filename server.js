@@ -28,11 +28,22 @@ const connection = mysql.createConnection({
   database: 'final-react',
 });
 
+// Configure CORS middleware
+app.use(cors({
+  origin: 'http://localhost:3000',
+  method: ["POST", "GET"],
+  credentials: true // Allow credentials (cookies, authorization headers, etc.) to be sent with the request
+}));
+
 // Configure session middleware
 app.use(session({
   secret: 'secret-key',
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // Ensures that the cookie is only sent over HTTPS
+    httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
+  }
 }));
 
 // Connect to MySQL database
@@ -45,7 +56,6 @@ connection.connect((err) => {
 });
 
 app.use(bodyParser.json());
-app.use(cors());
 
 // Signup endpoint
 app.post('/register', async (req, res) => {
@@ -131,6 +141,19 @@ app.get('/profile', (req, res) => {
 
   // User is logged in, return profile information
   res.json({ username: req.session.user.username });
+});
+
+// Backend endpoint to fetch profile data
+app.get('/profile-data', (req, res) => {
+
+  const query = 'SELECT * FROM users WHERE username = ?'; 
+  connection.query(query, [req.session.user.username], (error, results) => {
+    if (error) {
+      console.error('Error fetching profile data:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.json(results); 
+  });
 });
 
 // Logout endpoint
